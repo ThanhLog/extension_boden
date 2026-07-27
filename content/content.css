@@ -1,0 +1,87 @@
+/* Content script styles - injected into page */
+#boden-sidebar-container {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 360px;
+  height: 100vh;
+  z-index: 2147483646;
+  display: flex;
+  flex-direction: row;
+  transition: transform 0.25s ease;
+  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.3);
+}
+#boden-sidebar-container.boden-hidden {
+  transform: translateX(360px);
+}
+
+#boden-sidebar-container iframe {
+  flex: 1;
+  border: none;
+  background: #1a1d23;
+}
+
+#boden-sidebar-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+  background: transparent;
+  transition: background 0.2s;
+}
+#boden-sidebar-resize-handle:hover {
+  background: rgba(54, 147, 255, 0.5);
+}
+
+#boden-sidebar-toggle {
+  position: fixed;
+  top: 50%;
+  right: 360px;
+  transform: translateY(-50%);
+  z-index: 2147483647;
+  width: 22px;
+  height: 48px;
+  background: #2a2d35;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: right 0.25s ease, color 0.2s, background 0.2s;
+}
+#boden-sidebar-container.boden-hidden ~ #boden-sidebar-toggle {
+  right: 0;
+}
+#boden-sidebar-toggle:hover {
+  color: #3693FF;
+  background: #333640;
+}
+
+#boden-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  z-index: 2147483647;
+  background: #2a2d35;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+#boden-toast.boden-toast-show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

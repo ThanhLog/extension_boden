@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+  <div class="sidebar">
+    <!-- Header -->
+    <div class="sidebar-header">
+      <h2 class="sidebar-title">🎮 Phím tắt</h2>
+      <span class="sidebar-subtitle">Boden Label Assistant</span>
+    </div>
+
+    <!-- Box đang chọn -->
+    <div class="panel">
+      <div class="panel-header">📦 Box đang chọn</div>
+      <div class="panel-body" id="selectedBoxPanel">
+        <div class="empty-state">Click chọn box trên canvas</div>
+      </div>
+    </div>
+
+    <!-- Bảng phím tắt -->
+    <div class="panel panel-flex">
+      <div class="panel-header">⌨️ Danh sách phím tắt</div>
+      <div class="panel-body scrollable">
+        <table class="shortcut-table">
+          <thead>
+            <tr><th>Phím</th><th>Chức năng</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><kbd>1</kbd> ~ <kbd>5</kbd></td>
+              <td>Chuyển góc cam preset</td>
+            </tr>
+            <tr class="highlight-row">
+              <td><kbd>,</kbd> <kbd>.</kbd> <kbd>/</kbd></td>
+              <td>Frame trước / Frame sau / Play-Pause</td>
+            </tr>
+            <tr>
+              <td><kbd>&lt;</kbd> <kbd>&gt;</kbd></td>
+              <td>Frame đầu / Frame cuối (Shift)</td>
+            </tr>
+            <tr>
+              <td><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></td>
+              <td>Di chuyển box</td>
+            </tr>
+            <tr>
+              <td><kbd>↑</kbd> <kbd>←</kbd> <kbd>↓</kbd> <kbd>→</kbd></td>
+              <td>Di chuyển box (phím mũi tên)</td>
+            </tr>
+            <tr>
+              <td><kbd>Q</kbd> / <kbd>E</kbd></td>
+              <td>Box tiến / lùi (trục Z)</td>
+            </tr>
+            <tr>
+              <td><kbd>Shift</kbd> + Move</td>
+              <td>Di chuyển nhanh (bước lớn)</td>
+            </tr>
+            <tr class="highlight-row">
+              <td><kbd>Ctrl</kbd> + <kbd>C</kbd></td>
+              <td>Copy box đang chọn</td>
+            </tr>
+            <tr class="highlight-row">
+              <td><kbd>Ctrl</kbd> + <kbd>V</kbd></td>
+              <td>Paste box đã copy</td>
+            </tr>
+            <tr>
+              <td><kbd>Delete</kbd></td>
+              <td>Xóa box đang chọn</td>
+            </tr>
+            <tr>
+              <td><kbd>Ctrl</kbd> + <kbd>B</kbd></td>
+              <td>Đóng / Mở sidebar này</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="shortcut-note">
+          <h4>📋 Phím có sẵn trên web</h4>
+          <table class="shortcut-table native-table">
+            <thead>
+              <tr><th>Phím</th><th>Chức năng</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><kbd>1</kbd></td><td>Thuộc tính -第一选项</td></tr>
+              <tr><td><kbd>Alt</kbd>+<kbd>2</kbd>~<kbd>9</kbd></td><td>Thuộc tính 第二~第九选项</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trạng thái -->
+    <div class="panel">
+      <div class="panel-header">📊 Trạng thái</div>
+      <div class="panel-body" id="statusPanel">
+        <div class="status-row">
+          <span class="status-dot" id="statusThreeDot"></span>
+          <span id="statusThreeText">Đang kết nối...</span>
+        </div>
+        <div class="status-row">
+          <span>Viewport đang hover:</span>
+          <span class="status-value" id="statusViewport">—</span>
+        </div>
+        <div class="status-row">
+          <span>Tổng số box:</span>
+          <span class="status-value" id="statusBoxCount">—</span>
+        </div>
+        <div class="status-row">
+          <span>Thao tác cuối:</span>
+          <span class="status-value" id="statusLastAction" style="font-size:10px;">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="sidebar.js"></script>
+</body>
+</html>
