@@ -89,7 +89,7 @@
 
   // ─── Di chuyển box: simulate drag event ─────────────
   function getPixelOffset(direction, step) {
-    const px = step > 0.5 ? 5 : 1; // thường 1px, Shift+Move = 5px
+    const px = step > 0.5 ? 8 : 3; // thường 3px, Shift+Move = 8px
     let dx = 0, dy = 0;
 
     switch (hoveredViewport) {
@@ -157,7 +157,11 @@
       return;
     }
     const offset = getPixelOffset(direction, step || 0.2);
-    if (!offset) return;
+    if (!offset) {
+      console.log('[BodenBridge] moveBox: no offset for direction', direction);
+      return;
+    }
+    console.log('[BodenBridge] moveBox:', direction, 'offset:', offset, 'viewport:', hoveredViewport);
 
     if (simulateDrag(offset.dx, offset.dy)) {
       sendToContent({ type: 'boxMoved', boxId: selectedBoxName });
@@ -195,6 +199,162 @@
     sendToContent({ type: 'boxPasted', boxData: { name: copiedBoxName } });
   }
 
+  // ─── Xoay box qua handle cursor-grab ──────────────
+
+  function findRotationHandle() {
+    // Tìm thẻ <img class="...cursor-grab!..."> gần canvas đang hover nhất
+    const canvas = getActiveCanvas();
+    if (!canvas) return null;
+
+    // Đi ngược lên từ canvas qua các parent, tìm trong từng tầng
+    let el = canvas;
+    while (el && el !== document.body) {
+      // Tìm tất cả img cursor-grab trong element hiện tại
+      const imgs = el.querySelectorAll('img');
+      for (const img of imgs) {
+        if (img.classList.contains('cursor-grab!')) return img;
+        if (img.className && img.className.includes('cursor-grab')) return img;
+      }
+      el = el.parentElement;
+    }
+
+    // Fallback: quét toàn bộ trang
+    const allImgs = document.querySelectorAll('img');
+    for (const img of allImgs) {
+      if (img.classList.contains('cursor-grab!')) return img;
+      if (img.className && img.className.includes('cursor-grab')) return img;
+    }
+    return null;
+  }
+
+  // Hướng drag xoay theo từng góc cam
+  function getViewportRotateAxis() {
+    // Mỗi viewport có trục xoay khác nhau trong không gian 2D màn hình
+    // Trả về { useVertical: true } nếu viewport này xoay bằng drag dọc
+    switch (hoveredViewport) {
+      case 'top':    return { useVertical: false }; // Trên xuống: drag ngang để xoay quanh Y
+      case 'front':  return { useVertical: false }; // Phía trước: drag ngang để xoay quanh Z
+      case 'side':   return { useVertical: true  }; // Góc bên:   drag dọc  để xoay quanh X
+      default:       return { useVertical: false }; // Main:      drag ngang
+    }
+  }
+
+  function simulateRotateDrag(handle, degrees) {
+    const rect = handle.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    const axis = getViewportRotateAxis();
+    const pixels = Math.round(Math.abs(degrees) * 3);
+    let endX = cx, endY = cy;
+    if (axis.useVertical) {
+      endY = cy + pixels * (degrees > 0 ? -1 : 1);
+    } else {
+      endX = cx + pixels * (degrees > 0 ? 1 : -1);
+    }
+
+    const startOpts = { bubbles: true, cancelable: true, clientX: cx, clientY: cy,
+                        screenX: cx, screenY: cy, button: 0, buttons: 1 };
+    const endOpts   = { bubbles: true, cancelable: true, clientX: endX, clientY: endY,
+                        screenX: endX, screenY: endY, button: 0, buttons: 1 };
+    const upOpts    = { bubbles: true, cancelable: true, clientX: endX, clientY: endY,
+                        screenX: endX, screenY: endY, button: 0, buttons: 0 };
+
+    // B1: mousedown trên handle
+    handle.dispatchEvent(new MouseEvent('mousedown', startOpts));
+    try { handle.dispatchEvent(new PointerEvent('pointerdown', startOpts)); } catch(e) {}
+
+    // B2: mousemove + mouseup trên document
+    document.dispatchEvent(new MouseEvent('mousemove', endOpts));
+    document.dispatchEvent(new MouseEvent('mouseup', upOpts));
+    try {
+      document.dispatchEvent(new PointerEvent('pointermove', endOpts));
+      document.dispatchEvent(new PointerEvent('pointerup', upOpts));
+    } catch(e) {}
+
+    return true;
+  }
+
+  function rotateBox(direction, step) {
+    checkSelection();
+    if (!selectedBoxName) {
+      sendToContent({ type: 'toast', message: '⚠️ Chưa chọn box nào' });
+      return;
+    }
+
+    const angle = (step || 0.2) * 5; // ~1° mặc định, ~5° với Shift
+    const degrees = direction === 'forward' ? angle : -angle;
+    const dirLabel = direction === 'forward' ? '↺' : '↻';
+    const axis = getViewportRotateAxis();
+    const dragType = axis.useVertical ? 'dọc' : 'ngang';
+
+    const handle = findRotationHandle();
+    if (handle) {
+      simulateRotateDrag(handle, degrees);
+      sendToContent({ type: 'toast', message: dirLabel + ' Xoay ' + degrees.toFixed(1) + '° (' + dragType + ')' });
+      return;
+    }
+
+    if (tryModifyRotationInput(degrees)) {
+      sendToContent({ type: 'toast', message: dirLabel + ' Đã xoay: ' + degrees.toFixed(1) + '°' });
+      return;
+    }
+
+    sendToContent({ type: 'toast', message: '⚠️ Không tìm thấy handle xoay - F12' });
+    console.log('[BodenBridge] Rotate failed. Viewport:', hoveredViewport);
+  }
+
+  function findRotationInputs() {
+    // Tìm các input number có thể liên quan đến rotation
+    const inputs = document.querySelectorAll('.n-input-number input, input[type="number"]');
+    const results = [];
+    for (const input of inputs) {
+      const parent = input.closest('.boden-business-panel-card, .n-card, [class*="panel"]');
+      if (parent) {
+        const label = parent.querySelector('[class*="label"], [class*="title"], .n-form-item-label');
+        results.push({
+          value: input.value,
+          label: label ? label.textContent.trim() : '',
+          placeholder: input.placeholder || ''
+        });
+      }
+    }
+    return results;
+  }
+
+  function tryModifyRotationInput(degrees) {
+    // Tìm input rotation Z (xoay trong mặt phẳng nhìn)
+    const allInputs = document.querySelectorAll('.n-input-number input, input[type="number"]');
+    const inputPairs = [];
+    for (const input of allInputs) {
+      const wrapper = input.closest('[class*="input-number"], .n-input-number');
+      if (wrapper) {
+        const parentRow = wrapper.closest('[class*="row"], [class*="item"], .n-form-item');
+        if (parentRow) {
+          const label = parentRow.querySelector('[class*="label"], [class*="title"]');
+          inputPairs.push({
+            input,
+            label: label ? label.textContent.trim().toLowerCase() : ''
+          });
+        }
+      }
+    }
+    // Tìm input có label liên quan đến rotation/z
+    for (const pair of inputPairs) {
+      if (pair.label.includes('rot') || pair.label.includes('xoay') ||
+          pair.label.includes('z') || pair.label.includes('quay') ||
+          pair.label.includes('rz') || pair.label.includes('yaw')) {
+        const currentVal = parseFloat(pair.input.value) || 0;
+        pair.input.value = (currentVal + degrees).toFixed(2);
+        pair.input.dispatchEvent(new Event('input', { bubbles: true }));
+        pair.input.dispatchEvent(new Event('change', { bubbles: true }));
+        pair.input.dispatchEvent(new Event('blur', { bubbles: true }));
+        return true;
+      }
+    }
+    return false;
+  }
+
   // ─── Xóa box ──────────────────────────────────────
   function deleteBox() {
     checkSelection();
@@ -223,6 +383,7 @@
     const msg = event.data;
     switch (msg.action) {
       case 'moveBox':   moveBox(msg.direction, msg.step); break;
+      case 'rotateBox': rotateBox(msg.direction, msg.step); break;
       case 'copyBox':   copyBox(); break;
       case 'pasteBox':  pasteBox(); break;
       case 'deleteBox': deleteBox(); break;

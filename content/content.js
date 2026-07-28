@@ -11,21 +11,47 @@
   let currentViewport = null;
 
   // ─── Inject Page Bridge (MAIN world) ────────────────
+  let pageBridgeReady = false;
+
   function injectPageBridge() {
-    const script = document.createElement('script');
-    script.src = chrome.runtime.getURL('content/page-bridge.js');
-    script.onload = () => script.remove();
-    (document.head || document.documentElement).appendChild(script);
+    return new Promise((resolve) => {
+      // Kiểm tra nếu đã inject rồi (tránh duplicate)
+      if (document.getElementById('boden-page-bridge')) {
+        pageBridgeReady = true;
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = 'boden-page-bridge';
+      script.src = chrome.runtime.getURL('content/page-bridge.js');
+      script.onload = () => {
+        pageBridgeReady = true;
+        resolve();
+      };
+      script.onerror = () => {
+        // Retry sau 500ms nếu load thất bại
+        setTimeout(() => {
+          const retry = document.createElement('script');
+          retry.id = 'boden-page-bridge';
+          retry.src = chrome.runtime.getURL('content/page-bridge.js');
+          retry.onload = () => { pageBridgeReady = true; resolve(); };
+          retry.onerror = () => { console.error('[Boden] Page bridge load failed'); resolve(); };
+          (document.head || document.documentElement).appendChild(retry);
+        }, 500);
+      };
+      (document.head || document.documentElement).appendChild(script);
+    });
   }
 
   // ─── Keyboard Handler ──────────────────────────────
   function handleKeyDown(e) {
-    if (isEditingField(e.target)) return;
+    try {
+      if (isEditingField(e.target)) return;
 
-    const key = e.key.toLowerCase();
-    const ctrl = e.ctrlKey || e.metaKey;
-    const alt = e.altKey;
-    const shift = e.shiftKey;
+      const key = e.key.toLowerCase();
+      const ctrl = e.ctrlKey || e.metaKey;
+      const alt = e.altKey;
+      const shift = e.shiftKey;
 
     // ── Camera presets: 1-5 (không modifier) ──
     if (!ctrl && !alt && !shift && key >= '1' && key <= '5') {
@@ -68,7 +94,11 @@
       if (direction) {
         e.preventDefault();
         e.stopPropagation();
-        sendToPageBridge({ action: 'moveBox', direction, step: shift ? 1.0 : 0.2 });
+        if (direction === 'forward' || direction === 'backward') {
+          sendToPageBridge({ action: 'rotateBox', direction, step: shift ? 1.0 : 0.2 });
+        } else {
+          sendToPageBridge({ action: 'moveBox', direction, step: shift ? 1.0 : 0.2 });
+        }
         return;
       }
     }
@@ -103,6 +133,9 @@
       e.stopPropagation();
       toggleSidebar();
       return;
+    }
+    } catch (err) {
+      console.error('[Boden] Key handler error:', err.message || err);
     }
   }
 
@@ -315,16 +348,30 @@
   }
 
   // ─── Init ──────────────────────────────────────────
+  let _initialized = false;
+
   function init() {
+    if (_initialized) {
+      console.log('[Boden] Already initialized, skipping duplicate');
+      return;
+    }
+    _initialized = true;
+
+    // Inject page bridge (fire-and-forget, không cần await)
     injectPageBridge();
+
+    // Inject sidebar
     injectSidebar();
     setupViewportLabels();
+
+    // Luôn lắng nghe keydown — các hàm DOM-dependent sẽ tự fallback
     document.addEventListener('keydown', handleKeyDown, true);
     console.log('🎮 Boden Label Assistant ready');
     console.log('  1-5       : Camera presets');
     console.log('  , . /     : Frame trước/sau/play');
     console.log('  < >       : Frame đầu/cuối (Shift)');
-    console.log('  WASD/QE   : Di chuyển box');
+    console.log('  WASD/Arrows: Di chuyển box (3px, Shift=8px)');
+    console.log('  Q/E       : Xoay box (theo góc cam)');
     console.log('  Ctrl+C/V  : Copy/Paste box');
     console.log('  Delete    : Xóa box');
     console.log('  Ctrl+B    : Sidebar');
