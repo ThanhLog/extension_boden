@@ -229,14 +229,8 @@
 
   // Hướng drag xoay theo từng góc cam
   function getViewportRotateAxis() {
-    // Mỗi viewport có trục xoay khác nhau trong không gian 2D màn hình
-    // Trả về { useVertical: true } nếu viewport này xoay bằng drag dọc
-    switch (hoveredViewport) {
-      case 'top':    return { useVertical: false }; // Trên xuống: drag ngang để xoay quanh Y
-      case 'front':  return { useVertical: false }; // Phía trước: drag ngang để xoay quanh Z
-      case 'side':   return { useVertical: true  }; // Góc bên:   drag dọc  để xoay quanh X
-      default:       return { useVertical: false }; // Main:      drag ngang
-    }
+    // Tất cả viewport đều xoay bằng drag ngang trên handle cursor-grab
+    return { useVertical: false };
   }
 
   function simulateRotateDrag(handle, degrees) {
@@ -285,13 +279,11 @@
     const angle = (step || 0.2) * 5; // ~1° mặc định, ~5° với Shift
     const degrees = direction === 'forward' ? angle : -angle;
     const dirLabel = direction === 'forward' ? '↺' : '↻';
-    const axis = getViewportRotateAxis();
-    const dragType = axis.useVertical ? 'dọc' : 'ngang';
 
     const handle = findRotationHandle();
     if (handle) {
       simulateRotateDrag(handle, degrees);
-      sendToContent({ type: 'toast', message: dirLabel + ' Xoay ' + degrees.toFixed(1) + '° (' + dragType + ')' });
+      sendToContent({ type: 'toast', message: dirLabel + ' Xoay ' + degrees.toFixed(1) + '°' });
       return;
     }
 
