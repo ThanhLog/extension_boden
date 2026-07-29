@@ -180,22 +180,76 @@
     sendToContent({ type: 'boxCopied', boxData: { name: selectedBoxName } });
   }
 
-  // ─── Paste box ─────────────────────────────────────
+  // ─── Tool helpers ───────────────────────────────────
+  function findToolByIcon(iconName) {
+    // Tìm nút tool có SVG icon chứa iconName (vd: "cuboid", "select")
+    const allUse = document.querySelectorAll('svg use');
+    for (const use of allUse) {
+      const href = use.getAttribute('xlink:href') || use.getAttribute('href') || '';
+      if (href.includes(iconName)) {
+        // Tìm phần tử clickable gần nhất
+        const toolItem = use.closest('.boden-business-label-tool-item--tool') ||
+                         use.closest('.cursor-pointer') ||
+                         use.closest('button') ||
+                         use.closest('[role="button"]');
+        if (toolItem) return toolItem;
+        // Fallback: chính SVG có thể click được
+        const svg = use.closest('svg');
+        if (svg) {
+          const clickable = svg.closest('.cursor-pointer') || svg.closest('button');
+          if (clickable) return clickable;
+        }
+      }
+    }
+    return null;
+  }
+
+  function clickTool(iconName) {
+    const btn = findToolByIcon(iconName);
+    if (btn) {
+      btn.click();
+      return true;
+    }
+    return false;
+  }
+
+  // ─── Paste box: tạo box mới trên canvas ──────────────
   function pasteBox() {
     if (!copiedBoxName) {
       sendToContent({ type: 'toast', message: '⚠️ Chưa copy box nào (Ctrl+C trước)' });
       return;
     }
-    // Simulate Ctrl+V trên canvas - app có thể có handler riêng
+
     const canvas = getActiveCanvas();
-    if (canvas) {
-      canvas.focus();
-      canvas.dispatchEvent(new KeyboardEvent('keydown', {
-        key: 'v', ctrlKey: true, metaKey: true,
-        bubbles: true, cancelable: true
-      }));
+    if (!canvas) {
+      sendToContent({ type: 'toast', message: '⚠️ Không tìm thấy canvas' });
+      return;
     }
-    sendToContent({ type: 'toast', message: '✅ Đã paste: ' + copiedBoxName });
+
+    // B1: Click nút cuboid tool để vào chế độ tạo box
+    const cuboidBtn = findToolByIcon('cuboid');
+    if (cuboidBtn) {
+      cuboidBtn.click();
+    }
+
+    // B2: Click vào giữa canvas để đặt box mới
+    const rect = canvas.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    setTimeout(() => {
+      const opts = { bubbles: true, cancelable: true, clientX: cx, clientY: cy, button: 0 };
+      canvas.dispatchEvent(new MouseEvent('mousedown', opts));
+      canvas.dispatchEvent(new MouseEvent('mouseup', opts));
+
+      // B3: Trở về select tool
+      setTimeout(() => {
+        const selectBtn = findToolByIcon('select');
+        if (selectBtn) selectBtn.click();
+      }, 100);
+    }, 100);
+
+    sendToContent({ type: 'toast', message: '✅ Đã tạo box mới (copy: ' + copiedBoxName + ')' });
     sendToContent({ type: 'boxPasted', boxData: { name: copiedBoxName } });
   }
 

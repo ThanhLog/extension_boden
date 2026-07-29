@@ -46,6 +46,8 @@
   // ─── Keyboard Handler ──────────────────────────────
   function handleKeyDown(e) {
     try {
+      // Bỏ qua event synthetic từ page-bridge (tránh vòng lặp)
+      if (e._fromExtension) return;
       if (isEditingField(e.target)) return;
 
       const key = e.key.toLowerCase();
@@ -190,7 +192,7 @@
       const href = use.getAttribute('xlink:href') || use.getAttribute('href') || '';
       if (action === 'prev' && href.includes('pre-frame')) return icon;
       if (action === 'next' && href.includes('next-frame')) return icon;
-      if (action === 'play' && href.includes('play')) return icon;
+      if (action === 'play' && (href.includes('play') || href.includes('pause'))) return icon;
     }
     return null;
   }
@@ -214,7 +216,7 @@
     const btn = findFrameButton(action);
     if (btn) {
       btn.click();
-      const labels = { prev: '⏮', next: '⏭', play: '▶' };
+      const labels = { prev: '⏮', next: '⏭', play: '▶/⏸' };
       showToast(labels[action] + ' Frame: ' + action);
     }
   }
